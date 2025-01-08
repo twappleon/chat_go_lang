@@ -6,6 +6,8 @@ class ChatMessage {
   final String message;
   final DateTime timestamp;
 
+  // flutter pub run build_runner build
+
   ChatMessage({
     required this.id,
     required this.type,

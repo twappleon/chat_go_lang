@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"p2p_chat/database"
 	"p2p_chat/models"
 	"sync"
@@ -43,7 +44,7 @@ func saveMessage(msg *models.ChatMessage) error {
 
 	msg.ID = primitive.NewObjectID()
 	msg.Timestamp = time.Now()
-	println("---insert---", msg.Sender)
+	log.Printf("---insert---: %v", msg.Sender)
 	result, err := collection.InsertOne(ctx, msg)
 	if err != nil {
 		fmt.Println("Error inserting document:", err)
@@ -51,7 +52,7 @@ func saveMessage(msg *models.ChatMessage) error {
 	}
 
 	// 检查返回的插入结果
-	fmt.Println("Insert successful! Inserted ID:", result.InsertedID)
+	log.Printf("Insert successful! Inserted ID: %v", result.InsertedID)
 	return err
 }
 
@@ -164,6 +165,12 @@ func handleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	defer file.Close()
+
 	// 連接MongoDB
 	if err := database.ConnectMongoDB(); err != nil {
 		log.Fatal(err)
