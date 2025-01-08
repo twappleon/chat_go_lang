@@ -31,7 +31,7 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   late WebSocketChannel channel;
-  final List<String> messages = [];
+  final List<ChatMessage> messages = [];
   final ChatService chatService = ChatService();
   late String currentUserId;
 
@@ -47,9 +47,9 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _initWebRTC();
+    currentUserId = 'user123'; // 實際應用中應該從登錄狀態獲取
     _loadChatHistory();
     _connectWebSocket();
-    currentUserId = 'user123'; // 實際應用中應該從登錄狀態獲取
   }
 
   Future<void> _loadChatHistory() async {
@@ -65,13 +65,14 @@ class _ChatPageState extends State<ChatPage> {
 
   void _connectWebSocket() {    
     channel = WebSocketChannel.connect(
-      Uri.parse('ws://localhost:9999/ws'),
+      Uri.parse('ws://localhost:8888/ws'),
     );
     channel.stream.listen((message) {
       final data = jsonDecode(message);
       if (data['type'] == 'chat') {
+        final chatMessage = ChatMessage.fromJson(data);
         setState(() {
-          messages.add("${data['sender']}: ${data['message']}");
+          messages.add(chatMessage);
         });
       } else if (data['type'] == 'webrtc') {
         _handleWebRTCMessage(data);
@@ -215,7 +216,7 @@ class _ChatPageState extends State<ChatPage> {
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text(messages[index]),
+                  title: Text(messages[index].message),
                 );
               },
             ),
@@ -248,7 +249,7 @@ class _ChatPageState extends State<ChatPage> {
     if (_controller.text.isNotEmpty) {
       final message = {
         'type': 'chat',
-        'sender': 'User',
+        'sender': this.currentUserId,
         'message': _controller.text,
       };
       channel.sink.add(jsonEncode(message));

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../model/chat_message.dart';
 
 class ChatService {
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'http://localhost:8888';
 
   Future<List<ChatMessage>> getChatHistory(String userId) async {
     final response = await http.get(
