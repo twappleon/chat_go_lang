@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"p2p_chat/database"
 	"p2p_chat/models"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +39,28 @@ type Message struct {
 	Message   string                 `json:"message,omitempty"`
 	SDP       map[string]interface{} `json:"sdp,omitempty"`
 	Candidate map[string]interface{} `json:"candidate,omitempty"`
+}
+
+type Code int
+
+const (
+	StatusOK         Code = 200
+	StatusNotFound   Code = 404
+	BalanceNotEnough Code = 2003
+)
+
+type StatusMessage string
+
+const (
+	MsgSuccess          StatusMessage = "成功"
+	MsgNotFound         StatusMessage = "找不到"
+	MsgBalanceNotEnough StatusMessage = "餘額不足"
+)
+
+type Response struct {
+	Code    int                    `json:"code"`
+	Message string                 `json:"message"`
+	Data    map[string]interface{} `json:"data"`
 }
 
 func saveMessage(msg *models.ChatMessage) error {
@@ -120,10 +146,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// 遊戲設定
+		rangeMax := 49
+		selectCount := 6
+		// 生成開獎號碼
+		winningNumbers := generateWinningNumbers(rangeMax, selectCount)
+		fmt.Printf("開獎號碼: %v\n", winningNumbers)
+
 		// Save the message to the database
 		chatMessage := &models.ChatMessage{
 			Sender:  msg.Sender,
-			Message: msg.Message,
+			Message: fmt.Sprintf("%v", winningNumbers),
 			// Add other fields as necessary
 		}
 
@@ -160,8 +193,91 @@ func handleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	println(messages)
+
+	// Initialize the response
+	response := Response{
+		Code:    int(StatusOK),
+		Message: "Success",
+		Data:    map[string]interface{}{"messages": messages},
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(messages)
+	json.NewEncoder(w).Encode(response)
+}
+
+// 生成開獎號碼
+func generateWinningNumbers(rangeMax, count int) []int {
+	rand.Seed(time.Now().UnixNano())
+	numbers := rand.Perm(rangeMax)[:count]
+	sort.Ints(numbers) // 排序，方便匹配
+	return numbers
+}
+
+// 全部組合 (n選k)
+func combinations(numbers []int, k int) [][]int {
+	var result [][]int
+	var comb func(start int, combo []int)
+
+	comb = func(start int, combo []int) {
+		if len(combo) == k {
+			// 建立一個副本以避免共用切片
+			comboCopy := append([]int{}, combo...)
+			result = append(result, comboCopy)
+			return
+		}
+
+		for i := start; i < len(numbers); i++ {
+			comb(i+1, append(combo, numbers[i]))
+		}
+	}
+
+	comb(0, []int{})
+	return result
+}
+
+// 比對結果
+func checkWinning(userNumbers, winningNumbers []int) int {
+	matchCount := 0
+	for _, num := range userNumbers {
+		for _, winNum := range winningNumbers {
+			if num == winNum {
+				matchCount++
+			}
+		}
+	}
+	return matchCount
+}
+
+func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
+	userNumbersStr := r.URL.Query().Get("userNumbers")
+	if userNumbersStr == "" {
+		http.Error(w, "Missing userNumbers", http.StatusBadRequest)
+		return
+	}
+
+	// Convert userNumbersStr to a slice of integers
+	var userNumbers []int
+	// Assuming userNumbers are passed as a comma-separated string
+	for _, numStr := range strings.Split(userNumbersStr, ",") {
+		num, err := strconv.Atoi(numStr)
+		if err == nil {
+			userNumbers = append(userNumbers, num)
+		}
+	}
+
+	winningNumbers := generateWinningNumbers(49, 6) // Example: generate 6 winning numbers from 1 to 49
+	matchCount := checkWinning(userNumbers, winningNumbers)
+
+	data := map[string]interface{}{
+		"winningNumbers": winningNumbers,
+		"matchCount":     matchCount,
+	}
+	response := Response{
+		Code:    int(StatusOK),
+		Message: string(MsgSuccess),
+		Data:    map[string]interface{}{"data": data},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 func main() {
@@ -179,6 +295,7 @@ func main() {
 
 	http.HandleFunc("/ws", handleWebSocket)
 	http.HandleFunc("/api/chat/history", handleGetChatHistory)
+	http.HandleFunc("/api/check-winning", handleCheckWinning)
 	log.Println("Server starting at :8888")
 	if err := http.ListenAndServe(":8888", nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)
