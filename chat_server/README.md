@@ -41,3 +41,56 @@
 ```bash
 git clone https://github.com/yourusername/p2p-chat-app.git
 cd p2p-chat-app
+```
+2. 啟動 Docker 服務：
+```
+chmod +x start.sh
+./start.sh
+```
+
+服務將在以下端口啟動：
+
+##### 後端 API: http://localhost:8080
+##### MongoDB: http://localhost:27017
+##### Mongo Express: http://localhost:8081
+
+# 前端開發
+安裝依賴：
+bash
+
+複製
+cd frontend
+flutter pub get
+運行應用：
+bash
+
+複製
+flutter run
+
+### 項目結構
+```
+p2p_chat_app/
+├── backend/
+│   ├── config/
+│   │   └── config.go
+│   ├── database/
+│   │   └── mongodb.go
+│   ├── models/
+│   │   └── message.go
+│   ├── Dockerfile
+│   ├── main.go
+│   └── go.mod
+├── frontend/
+│   ├── lib/
+│   │   ├── config/
+│   │   ├── models/
+│   │   ├── pages/
+│   │   ├── providers/
+│   │   ├── services/
+│   │   └── widgets/
+│   └── pubspec.yaml
+├── docker-compose.yml
+├── start.sh
+├── stop.sh
+└── README.md
+```
