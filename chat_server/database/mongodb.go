@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"p2p_chat/config"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -14,14 +16,11 @@ var (
 	ChatDB *mongo.Database
 )
 
-func ConnectMongoDB() error {
+func ConnectMongoDB(cfg *config.Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetAuth(options.Credential{
-		Username: "root",
-		Password: "12345678",
-	})
+	clientOptions := options.Client().ApplyURI(cfg.MongoURI)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return err
@@ -34,9 +33,9 @@ func ConnectMongoDB() error {
 	}
 
 	Client = client
-	ChatDB = client.Database("chat_app")
+	ChatDB = client.Database(cfg.DBName)
 
-	log.Println("Successfully connected to MongoDB")
+	log.Printf("Successfully connected to MongoDB at %s", cfg.MongoURI)
 	return nil
 }
 

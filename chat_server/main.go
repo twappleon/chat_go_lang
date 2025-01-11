@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"p2p_chat/config"
 	"p2p_chat/database"
 	"p2p_chat/models"
 	"sort"
@@ -287,8 +288,11 @@ func main() {
 	}
 	defer file.Close()
 
+	// 載入配置
+	cfg := config.LoadConfig()
+
 	// 連接MongoDB
-	if err := database.ConnectMongoDB(); err != nil {
+	if err := database.ConnectMongoDB(cfg); err != nil {
 		log.Fatal(err)
 	}
 	defer database.CloseMongoDB()
