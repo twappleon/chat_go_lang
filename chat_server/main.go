@@ -42,6 +42,15 @@ type Message struct {
 	Candidate map[string]interface{} `json:"candidate,omitempty"`
 }
 
+type LotteryResponse struct {
+	winningNumbers []int `json:"winning_nunbers"`
+}
+
+type MatchResponse struct {
+	MatchedNumber []int `json:"matched_numbers"`
+	MatchCount    int   `json:"match_count"`
+}
+
 type Code int
 
 const (
@@ -281,6 +290,54 @@ func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func handleGenerateWinningNumbers(w http.ResponseWriter, r *http.Request) {
+	// Generate winning numbers
+	winningNumbers := generateWinningNumbers(49, 6) // Example: generate 6 winning numbers from 1 to 49
+
+	// Prepare the response
+	response := Response{
+		Code:    int(StatusOK),
+		Message: "Winning numbers generated successfully",
+		Data:    map[string]interface{}{"winningNumbers": winningNumbers},
+	}
+
+	// Set the response header and encode the response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func handleCheckNumbers(w http.ResponseWriter, r *http.Request) {
+	userNumbersStr := r.URL.Query().Get("userNumbers")
+	if userNumbersStr == "" {
+		http.Error(w, "Missing userNumbers", http.StatusBadRequest)
+		return
+	}
+
+	// Convert userNumbersStr to a slice of integers
+	var userNumbers []int
+	for _, numStr := range strings.Split(userNumbersStr, ",") {
+		num, err := strconv.Atoi(numStr)
+		if err == nil {
+			userNumbers = append(userNumbers, num)
+		}
+	}
+
+	// Generate winning numbers for comparison
+	winningNumbers := generateWinningNumbers(49, 6) // Example: generate 6 winning numbers from 1 to 49
+	matchCount := checkWinning(userNumbers, winningNumbers)
+
+	// Prepare the response
+	response := Response{
+		Code:    int(StatusOK),
+		Message: "Check completed successfully",
+		Data:    map[string]interface{}{"winningNumbers": winningNumbers, "matchCount": matchCount},
+	}
+
+	// Set the response header and encode the response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 func main() {
 	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -300,6 +357,8 @@ func main() {
 	http.HandleFunc("/ws", handleWebSocket)
 	http.HandleFunc("/api/chat/history", handleGetChatHistory)
 	http.HandleFunc("/api/check-winning", handleCheckWinning)
+	http.HandleFunc("/api/handleGenerateWinningNumbers", handleGenerateWinningNumbers)
+	http.HandleFunc("/api/checkNumber", handleCheckNumbers)
 	log.Println("Server starting at :8888")
 	if err := http.ListenAndServe(":8888", nil); err != nil {
 		log.Fatal("ListenAndServe: ", err)
