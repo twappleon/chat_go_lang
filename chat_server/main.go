@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"p2p_chat/config"
 	"p2p_chat/database"
 	"p2p_chat/models"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"p2p_chat/lottery"
 
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson"
@@ -159,8 +159,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		// 遊戲設定
 		rangeMax := 49
 		selectCount := 6
-		// 生成開獎號碼
-		winningNumbers := generateWinningNumbers(rangeMax, selectCount)
+		// Use the lottery package to generate winning numbers
+		winningNumbers := lottery.GenerateWinningNumbers(rangeMax, selectCount)
 		fmt.Printf("開獎號碼: %v\n", winningNumbers)
 
 		// Save the message to the database
@@ -214,49 +214,6 @@ func handleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// 生成開獎號碼
-func generateWinningNumbers(rangeMax, count int) []int {
-	rand.Seed(time.Now().UnixNano())
-	numbers := rand.Perm(rangeMax)[:count]
-	sort.Ints(numbers) // 排序，方便匹配
-	return numbers
-}
-
-// 全部組合 (n選k)
-func combinations(numbers []int, k int) [][]int {
-	var result [][]int
-	var comb func(start int, combo []int)
-
-	comb = func(start int, combo []int) {
-		if len(combo) == k {
-			// 建立一個副本以避免共用切片
-			comboCopy := append([]int{}, combo...)
-			result = append(result, comboCopy)
-			return
-		}
-
-		for i := start; i < len(numbers); i++ {
-			comb(i+1, append(combo, numbers[i]))
-		}
-	}
-
-	comb(0, []int{})
-	return result
-}
-
-// 比對結果
-func checkWinning(userNumbers, winningNumbers []int) int {
-	matchCount := 0
-	for _, num := range userNumbers {
-		for _, winNum := range winningNumbers {
-			if num == winNum {
-				matchCount++
-			}
-		}
-	}
-	return matchCount
-}
-
 func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
 	userNumbersStr := r.URL.Query().Get("userNumbers")
 	if userNumbersStr == "" {
@@ -274,8 +231,9 @@ func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	winningNumbers := generateWinningNumbers(49, 6) // Example: generate 6 winning numbers from 1 to 49
-	matchCount := checkWinning(userNumbers, winningNumbers)
+	// Use the lottery package to generate winning numbers and check matches
+	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
+	matchCount := lottery.CheckWinning(userNumbers, winningNumbers)
 
 	data := map[string]interface{}{
 		"winningNumbers": winningNumbers,
@@ -291,8 +249,8 @@ func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGenerateWinningNumbers(w http.ResponseWriter, r *http.Request) {
-	// Generate winning numbers
-	winningNumbers := generateWinningNumbers(49, 6) // Example: generate 6 winning numbers from 1 to 49
+	// Use the lottery package to generate winning numbers
+	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
 
 	// Prepare the response
 	response := Response{
@@ -322,9 +280,9 @@ func handleCheckNumbers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Generate winning numbers for comparison
-	winningNumbers := generateWinningNumbers(49, 6) // Example: generate 6 winning numbers from 1 to 49
-	matchCount := checkWinning(userNumbers, winningNumbers)
+	// Use the lottery package to generate winning numbers and check matches
+	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
+	matchCount := lottery.CheckWinning(userNumbers, winningNumbers)
 
 	// Prepare the response
 	response := Response{
