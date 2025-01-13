@@ -233,11 +233,12 @@ func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
 
 	// Use the lottery package to generate winning numbers and check matches
 	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
-	matchCount := lottery.CheckWinning(userNumbers, winningNumbers)
+	matchCount, matchedNumbers := lottery.CheckWinning(userNumbers, winningNumbers)
 
 	data := map[string]interface{}{
 		"winningNumbers": winningNumbers,
 		"matchCount":     matchCount,
+		"matchedNumbers": matchedNumbers,
 	}
 	response := Response{
 		Code:    int(StatusOK),
@@ -282,13 +283,13 @@ func handleCheckNumbers(w http.ResponseWriter, r *http.Request) {
 
 	// Use the lottery package to generate winning numbers and check matches
 	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
-	matchCount := lottery.CheckWinning(userNumbers, winningNumbers)
+	matchCount, matchedNumbers := lottery.CheckWinning(userNumbers, winningNumbers)
 
 	// Prepare the response
 	response := Response{
 		Code:    int(StatusOK),
 		Message: "Check completed successfully",
-		Data:    map[string]interface{}{"winningNumbers": winningNumbers, "matchCount": matchCount},
+		Data:    map[string]interface{}{"winningNumbers": winningNumbers, "matchCount": matchCount, "matchedNumbers": matchedNumbers},
 	}
 
 	// Set the response header and encode the response
