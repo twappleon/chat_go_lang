@@ -126,7 +126,9 @@ func getMessages(userId string, limit int64) ([]models.ChatMessage, error) {
 	return messages, nil
 }
 
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+func handleWebSocket(c *gin.Context) {
+	w := c.Writer
+	r := c.Request
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Websocket upgrade error: %v", err)
@@ -214,16 +216,15 @@ func handleGetChatHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
-	userNumbersStr := r.URL.Query().Get("userNumbers")
+func handleCheckWinning(c *gin.Context) {
+	userNumbersStr := c.Query("userNumbers")
 	if userNumbersStr == "" {
-		http.Error(w, "Missing userNumbers", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing userNumbers"})
 		return
 	}
 
 	// Convert userNumbersStr to a slice of integers
 	var userNumbers []int
-	// Assuming userNumbers are passed as a comma-separated string
 	for _, numStr := range strings.Split(userNumbersStr, ",") {
 		num, err := strconv.Atoi(numStr)
 		if err == nil {
@@ -245,11 +246,10 @@ func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
 		Message: string(MsgSuccess),
 		Data:    map[string]interface{}{"data": data},
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	c.JSON(http.StatusOK, response)
 }
 
-func handleGenerateWinningNumbers(w http.ResponseWriter, r *http.Request) {
+func handleGenerateWinningNumbers(c *gin.Context) {
 	// Use the lottery package to generate winning numbers
 	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
 
@@ -260,15 +260,14 @@ func handleGenerateWinningNumbers(w http.ResponseWriter, r *http.Request) {
 		Data:    map[string]interface{}{"winningNumbers": winningNumbers},
 	}
 
-	// Set the response header and encode the response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	// Send the response as JSON
+	c.JSON(http.StatusOK, response)
 }
 
-func handleCheckNumbers(w http.ResponseWriter, r *http.Request) {
-	userNumbersStr := r.URL.Query().Get("userNumbers")
+func handleCheckNumbers(c *gin.Context) {
+	userNumbersStr := c.Query("userNumbers")
 	if userNumbersStr == "" {
-		http.Error(w, "Missing userNumbers", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing userNumbers"})
 		return
 	}
 
@@ -292,9 +291,8 @@ func handleCheckNumbers(w http.ResponseWriter, r *http.Request) {
 		Data:    map[string]interface{}{"winningNumbers": winningNumbers, "matchCount": matchCount, "matchedNumbers": matchedNumbers},
 	}
 
-	// Set the response header and encode the response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	// Send the response as JSON
+	c.JSON(http.StatusOK, response)
 }
 
 func main() {
@@ -315,11 +313,10 @@ func main() {
 
 	r := gin.Default()
 
-	r.GET("/ws", handleWebSocket)
-
-	// 使用 Gin 跷路由器定义 API 跚
+	// 使用 Gin 路由器定义 API 路由
 	api := r.Group("/api")
 	{
+		api.GET("/ws", handleWebSocket)
 		api.GET("/chat/history", handleGetChatHistory)
 		api.GET("/check-winning", handleCheckWinning)
 		api.GET("/generate-winning-numbers", handleGenerateWinningNumbers)
