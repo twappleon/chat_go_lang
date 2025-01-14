@@ -17,6 +17,7 @@ import (
 
 	"p2p_chat/lottery"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -189,17 +190,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGetChatHistory(w http.ResponseWriter, r *http.Request) {
-	userId := r.URL.Query().Get("userId")
+func handleGetChatHistory(c *gin.Context) {
+	userId := c.Query("userId")
 	println("userId%s", userId)
 	if userId == "" {
-		http.Error(w, "Missing userId", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing userId"})
 		return
 	}
 
 	messages, err := getMessages(userId, 100)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	println(messages)
@@ -210,8 +211,7 @@ func handleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 		Message: "Success",
 		Data:    map[string]interface{}{"messages": messages},
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	c.JSON(http.StatusOK, response)
 }
 
 func handleCheckWinning(w http.ResponseWriter, r *http.Request) {
@@ -313,13 +313,21 @@ func main() {
 	}
 	defer database.CloseMongoDB()
 
-	http.HandleFunc("/ws", handleWebSocket)
-	http.HandleFunc("/api/chat/history", handleGetChatHistory)
-	http.HandleFunc("/api/check-winning", handleCheckWinning)
-	http.HandleFunc("/api/handleGenerateWinningNumbers", handleGenerateWinningNumbers)
-	http.HandleFunc("/api/checkNumber", handleCheckNumbers)
+	r := gin.Default()
+
+	r.GET("/ws", handleWebSocket)
+
+	// 使用 Gin 跷路由器定义 API 跚
+	api := r.Group("/api")
+	{
+		api.GET("/chat/history", handleGetChatHistory)
+		api.GET("/check-winning", handleCheckWinning)
+		api.GET("/generate-winning-numbers", handleGenerateWinningNumbers)
+		api.GET("/check-number", handleCheckNumbers)
+	}
+
 	log.Println("Server starting at :8888")
-	if err := http.ListenAndServe(":8888", nil); err != nil {
+	if err := r.Run(":8888"); err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
 }

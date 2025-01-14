@@ -16,7 +16,7 @@ class _LotteryGamePageState extends State<LotteryGamePage> {
   List<int>? matchedNumbers;
   int matchCount = 0;
 
-  final String serverUrl = "http://localhost:8080";
+  final String serverUrl = "http://localhost:9999";
 
   bool isAnimating = false; // 标识动画状态
   List<int> animatedNumbers = []; // 动画中逐个展示的号码
