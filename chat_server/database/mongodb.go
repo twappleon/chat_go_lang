@@ -20,7 +20,10 @@ func ConnectMongoDB(cfg *config.Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI(cfg.MongoURI)
+	clientOptions := options.Client().ApplyURI(cfg.MongoURI).SetAuth(options.Credential{
+		Username: "root", // 使用提供的用户名
+		Password: "12345678",
+	})
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return err
