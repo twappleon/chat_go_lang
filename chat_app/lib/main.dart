@@ -4,9 +4,12 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
 import '../model/chat_message.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
   runApp(ChatApp());
 }
 
@@ -42,6 +45,7 @@ class _ChatPageState extends State<ChatPage> {
   final _localRenderer = RTCVideoRenderer();
   final _remoteRenderer = RTCVideoRenderer();
   bool _inCalling = false;
+  BannerAd? _bannerAd;
 
   @override
   void initState() {
@@ -50,6 +54,7 @@ class _ChatPageState extends State<ChatPage> {
     currentUserId = 'user123'; // 實際應用中應該從登錄狀態獲取
     _loadChatHistory();
     _connectWebSocket();
+    _loadBannerAd();
   }
 
   Future<void> _loadChatHistory() async {
@@ -183,6 +188,21 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'YOUR_AD_UNIT_ID',
+      request: AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          setState(() {});
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+        },
+      ),
+    )..load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -221,6 +241,11 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ),
+          if (_bannerAd != null)
+            Container(
+              height: 50,
+              child: AdWidget(ad: _bannerAd!),
+            ),
           Padding(
             padding: EdgeInsets.all(8.0),
             child: Row(
@@ -273,6 +298,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    _bannerAd?.dispose();
     _endCall();
     channel.sink.close();
     _controller.dispose();

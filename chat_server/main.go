@@ -74,6 +74,13 @@ type Response struct {
 	Data    map[string]interface{} `json:"data"`
 }
 
+type Friend struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+var friends = make(map[string][]Friend) // 存储用户的好友列表
+
 func saveMessage(msg *models.ChatMessage) error {
 	collection := database.ChatDB.Collection("messages")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -295,6 +302,42 @@ func handleCheckNumbers(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// 新增好友接口
+func handleAddFriend(c *gin.Context) {
+	userId := c.Query("userId")
+	friendId := c.Query("friendId")
+	if userId == "" || friendId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing userId or friendId"})
+		return
+	}
+
+	// 添加好友
+	friends[userId] = append(friends[userId], Friend{ID: friendId, Name: "Friend Name"}) // 这里可以根据需要设置好友名称
+
+	c.JSON(http.StatusOK, gin.H{"message": "Friend added successfully"})
+}
+
+// 刪除好友接口
+func handleRemoveFriend(c *gin.Context) {
+	userId := c.Query("userId")
+	friendId := c.Query("friendId")
+	if userId == "" || friendId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing userId or friendId"})
+		return
+	}
+
+	// 刪除好友
+	for i, friend := range friends[userId] {
+		if friend.ID == friendId {
+			friends[userId] = append(friends[userId][:i], friends[userId][i+1:]...) // 删除好友
+			c.JSON(http.StatusOK, gin.H{"message": "Friend removed successfully"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusNotFound, gin.H{"error": "Friend not found"})
+}
+
 func main() {
 	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -321,6 +364,8 @@ func main() {
 		api.GET("/check-winning", handleCheckWinning)
 		api.GET("/generate-winning-numbers", handleGenerateWinningNumbers)
 		api.GET("/check-number", handleCheckNumbers)
+		api.POST("/add-friend", handleAddFriend)
+		api.DELETE("/remove-friend", handleRemoveFriend)
 	}
 
 	log.Println("Server starting at :8888")
