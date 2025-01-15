@@ -5,7 +5,8 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
 import '../model/chat_message.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-
+import 'package:get/get.dart';
+import 'chat_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,175 +33,34 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _controller = TextEditingController();
-  late WebSocketChannel channel;
-  final List<ChatMessage> messages = [];
-  final ChatService chatService = ChatService();
-  late String currentUserId;
-
-  // WebRTC 相關變量
-  RTCPeerConnection? _peerConnection;
-  MediaStream? _localStream;
-  MediaStream? _remoteStream;
-  final _localRenderer = RTCVideoRenderer();
-  final _remoteRenderer = RTCVideoRenderer();
-  bool _inCalling = false;
+  final ChatController chatController = Get.put(ChatController());
   BannerAd? _bannerAd;
 
   @override
   void initState() {
     super.initState();
-    _initWebRTC();
-    currentUserId = 'user123'; // 實際應用中應該從登錄狀態獲取
-    _loadChatHistory();
-    _connectWebSocket();
-    _loadBannerAd();
-  }
-
-  Future<void> _loadChatHistory() async {
-    try {
-      final history = await chatService.getChatHistory(currentUserId);
-      setState(() {
-        messages.addAll(history);
-      });
-    } catch (e) {
-      print('Error loading chat history: $e');
-    }
-  }
-
-  void _connectWebSocket() {    
-    channel = WebSocketChannel.connect(
-      Uri.parse('ws://localhost:8888/ws'),
-    );
-    channel.stream.listen((message) {
-      final data = jsonDecode(message);
-      if (data['type'] == 'chat') {
-        final chatMessage = ChatMessage.fromJson(data);
-        setState(() {
-          messages.add(chatMessage);
-        });
-      } else if (data['type'] == 'webrtc') {
-        _handleWebRTCMessage(data);
-      }
-    });
-  }
-
-  Future<void> _initWebRTC() async {
-    await _localRenderer.initialize();
-    await _remoteRenderer.initialize();
-
-    final Map<String, dynamic> configuration = {
-      "iceServers": [
-        {"url": "stun:stun.l.google.com:19302"},
-      ]
-    };
-
-    _peerConnection = await createPeerConnection(configuration);
-
-    _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
-      channel.sink.add(jsonEncode({
-        'type': 'webrtc',
-        'action': 'ice_candidate',
-        'candidate': candidate.toMap(),
-      }));
-    };
-
-    _peerConnection?.onTrack = (RTCTrackEvent event) {
-      if (event.streams.isNotEmpty) {
-        setState(() {
-          _remoteStream = event.streams[0];
-          _remoteRenderer.srcObject = _remoteStream;
-        });
-      }
-    };
-  }
-
-  Future<void> _startCall() async {
-    final Map<String, dynamic> mediaConstraints = {
-      'audio': true,
-      'video': {
-        'facingMode': 'user',
-      }
-    };
-
-    try {
-      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-      _localRenderer.srcObject = _localStream;
-
-      _localStream?.getTracks().forEach((track) {
-        _peerConnection?.addTrack(track, _localStream!);
-      });
-
-      RTCSessionDescription offer = await _peerConnection!.createOffer();
-      await _peerConnection!.setLocalDescription(offer);
-
-      channel.sink.add(jsonEncode({
-        'type': 'webrtc',
-        'action': 'offer',
-        'sdp': offer.toMap(),
-      }));
-
-      setState(() {
-        _inCalling = true;
-      });
-    } catch (e) {
-      print(e.toString());
-    }
-  }
-
-  Future<void> _handleWebRTCMessage(Map<String, dynamic> data) async {
-    switch (data['action']) {
-      case 'offer':
-        await _peerConnection?.setRemoteDescription(
-          RTCSessionDescription(
-            data['sdp']['sdp'],
-            data['sdp']['type'],
-          ),
-        );
-        RTCSessionDescription answer = await _peerConnection!.createAnswer();
-        await _peerConnection?.setLocalDescription(answer);
-        
-        channel.sink.add(jsonEncode({
-          'type': 'webrtc',
-          'action': 'answer',
-          'sdp': answer.toMap(),
-        }));
-        break;
-
-      case 'answer':
-        await _peerConnection?.setRemoteDescription(
-          RTCSessionDescription(
-            data['sdp']['sdp'],
-            data['sdp']['type'],
-          ),
-        );
-        break;
-
-      case 'ice_candidate':
-        await _peerConnection?.addCandidate(
-          RTCIceCandidate(
-            data['candidate']['candidate'],
-            data['candidate']['sdpMid'],
-            data['candidate']['sdpMLineIndex'],
-          ),
-        );
-        break;
-    }
+    _loadBannerAd(); // 加载广告
   }
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'YOUR_AD_UNIT_ID',
+      adUnitId: 'YOUR_AD_UNIT_ID', // 替换为您的广告单元 ID
       request: AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
-          setState(() {});
+          setState(() {}); // 广告加载后更新状态
         },
         onAdFailedToLoad: (ad, error) {
-          ad.dispose();
+          ad.dispose(); // 处理广告加载失败
         },
       ),
     )..load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose(); // 释放广告资源
+    super.dispose();
   }
 
   @override
@@ -208,40 +68,21 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('P2P Chat & Video'),
-        actions: [
-          IconButton(
-            icon: Icon(_inCalling ? Icons.call_end : Icons.video_call),
-            onPressed: _inCalling ? _endCall : _startCall,
-          ),
-        ],
       ),
       body: Column(
         children: [
-          if (_inCalling) Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                Expanded(
-                  child: RTCVideoView(_localRenderer),
-                ),
-                Expanded(
-                  child: RTCVideoView(_remoteRenderer),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             flex: 3,
-            child: ListView.builder(
-              itemCount: messages.length,
+            child: Obx(() => ListView.builder(
+              itemCount: chatController.messages.length,
               itemBuilder: (context, index) {
                 return ListTile(
-                  title: Text(messages[index].message),
+                  title: Text(chatController.messages[index].message),
                 );
               },
-            ),
+            )),
           ),
-          if (_bannerAd != null)
+          if (_bannerAd != null) // 显示广告
             Container(
               height: 50,
               child: AdWidget(ad: _bannerAd!),
@@ -252,7 +93,12 @@ class _ChatPageState extends State<ChatPage> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _controller,
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        final message = ChatMessage(message: value);
+                        chatController.addMessage(message);
+                      }
+                    },
                     decoration: InputDecoration(
                       labelText: '輸入訊息',
                     ),
@@ -260,7 +106,9 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 IconButton(
                   icon: Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  onPressed: () {
+                    // 发送消息逻辑
+                  },
                 ),
               ],
             ),
@@ -268,42 +116,5 @@ class _ChatPageState extends State<ChatPage> {
         ],
       ),
     );
-  }
-
-  void _sendMessage() {
-    if (_controller.text.isNotEmpty) {
-      final message = {
-        'type': 'chat',
-        'sender': this.currentUserId,
-        'message': _controller.text,
-      };
-      channel.sink.add(jsonEncode(message));
-      _controller.clear();
-    }
-  }
-
-  Future<void> _endCall() async {
-    try {
-      await _localStream?.dispose();
-      await _peerConnection?.close();
-      _localRenderer.srcObject = null;
-      _remoteRenderer.srcObject = null;
-      setState(() {
-        _inCalling = false;
-      });
-    } catch (e) {
-      print(e.toString());
-    }
-  }
-
-  @override
-  void dispose() {
-    _bannerAd?.dispose();
-    _endCall();
-    channel.sink.close();
-    _controller.dispose();
-    _localRenderer.dispose();
-    _remoteRenderer.dispose();
-    super.dispose();
   }
 }
