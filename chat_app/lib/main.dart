@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
-import '../model/chat_message.dart';
+import './model/chat_message.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get.dart';
-import 'chat_controller.dart';
+import './controllers/chat_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +46,7 @@ class _ChatPageState extends State<ChatPage> {
     _bannerAd = BannerAd(
       adUnitId: 'YOUR_AD_UNIT_ID', // 替换为您的广告单元 ID
       request: AdRequest(),
+      size: AdSize.banner, // 添加缺失的size参数
       listener: BannerAdListener(
         onAdLoaded: (_) {
           setState(() {}); // 广告加载后更新状态
@@ -95,7 +96,7 @@ class _ChatPageState extends State<ChatPage> {
                   child: TextField(
                     onSubmitted: (value) {
                       if (value.isNotEmpty) {
-                        final message = ChatMessage(message: value);
+                        final message = ChatMessage(message: value, id: '1', type: 'chat', sender: 'user123', receiver: 'user456', timestamp: DateTime.now());
                         chatController.addMessage(message);
                       }
                     },
