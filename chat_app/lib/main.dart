@@ -50,7 +50,7 @@ class _ChatPageState extends State<ChatPage> {
 
   void _fetchData() async {
     try {
-      final response = await _apiService.get('YOUR_API_ENDPOINT');
+      final response = await _dio.get('YOUR_API_ENDPOINT');
       print(response.data);
     } catch (e) {
       print('请求失败: $e');
