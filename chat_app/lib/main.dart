@@ -8,7 +8,6 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get.dart';
 import './controllers/chat_controller.dart';
 import 'package:dio/dio.dart';
-import './api_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,10 +22,7 @@ class ChatApp extends StatelessWidget {
       title: 'P2P Chat & Video',
       theme: ThemeData(
         primaryColor: Colors.deepPurple,
-        accentColor: Colors.amber,
-        textTheme: TextTheme(
-          bodyText1: TextStyle(color: Colors.white),
-        ),
+        colorScheme: ColorScheme.fromSwatch().copyWith(secondary: Colors.amber),
       ),
       home: ChatPage(),
     );
@@ -42,12 +38,10 @@ class _ChatPageState extends State<ChatPage> {
   final ChatController chatController = Get.put(ChatController());
   BannerAd? _bannerAd;
   final Dio _dio = Dio();
-  late ApiService _apiService;
 
   @override
   void initState() {
     super.initState();
-    _apiService = ApiService(_dio);
     _loadBannerAd();
     _fetchData();
   }
@@ -144,7 +138,8 @@ class _ChatPageState extends State<ChatPage> {
                   IconButton(
                     icon: Icon(Icons.send, color: Colors.white),
                     onPressed: () {
-                      // 发送消息逻辑
+                      final message = ChatMessage(message: 'Your message here', id: '1', type: 'chat', sender: 'user123', receiver: 'user456', timestamp: DateTime.now());
+                      chatController.addMessage(message);
                     },
                   ),
                 ],
