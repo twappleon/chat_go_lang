@@ -38,6 +38,7 @@ class _ChatPageState extends State<ChatPage> {
   final ChatController chatController = Get.put(ChatController());
   BannerAd? _bannerAd;
   final Dio _dio = Dio();
+  final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
 
   @override
   void initState() {
@@ -77,6 +78,11 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
+  void _addMessage(ChatMessage message) {
+    chatController.addMessage(message);
+    _listKey.currentState?.insertItem(chatController.messages.length - 1);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,19 +96,11 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             Expanded(
               flex: 3,
-              child: Obx(() => ListView.builder(
-                itemCount: chatController.messages.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(
-                      chatController.messages[index].message,
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    tileColor: Colors.deepPurpleAccent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  );
+              child: Obx(() => AnimatedList(
+                key: _listKey,
+                initialItemCount: chatController.messages.length,
+                itemBuilder: (context, index, animation) {
+                  return _buildMessageItem(chatController.messages[index], animation);
                 },
               )),
             ),
@@ -114,13 +112,14 @@ class _ChatPageState extends State<ChatPage> {
             Padding(
               padding: EdgeInsets.all(8.0),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: TextField(
                       onSubmitted: (value) {
                         if (value.isNotEmpty) {
                           final message = ChatMessage(message: value, id: '1', type: 'chat', sender: 'user123', receiver: 'user456', timestamp: DateTime.now());
-                          chatController.addMessage(message);
+                          _addMessage(message);
                         }
                       },
                       decoration: InputDecoration(
@@ -135,17 +134,47 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                     ),
                   ),
+                  SizedBox(width: 8),
                   IconButton(
                     icon: Icon(Icons.send, color: Colors.white),
                     onPressed: () {
                       final message = ChatMessage(message: 'Your message here', id: '1', type: 'chat', sender: 'user123', receiver: 'user456', timestamp: DateTime.now());
-                      chatController.addMessage(message);
+                      _addMessage(message);
                     },
                   ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageItem(ChatMessage message, Animation<double> animation) {
+    return SizeTransition(
+      sizeFactor: animation,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 5.0, horizontal: 10.0),
+        decoration: BoxDecoration(
+          color: Colors.deepPurpleAccent,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 5.0,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ListTile(
+          title: Text(
+            message.message,
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
         ),
       ),
     );
