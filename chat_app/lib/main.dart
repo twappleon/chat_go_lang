@@ -22,7 +22,11 @@ class ChatApp extends StatelessWidget {
     return MaterialApp(
       title: 'P2P Chat & Video',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primaryColor: Colors.deepPurple,
+        accentColor: Colors.amber,
+        textTheme: TextTheme(
+          bodyText1: TextStyle(color: Colors.white),
+        ),
       ),
       home: ChatPage(),
     );
@@ -84,52 +88,70 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('P2P Chat & Video'),
+        backgroundColor: Colors.deepPurple,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Obx(() => ListView.builder(
-              itemCount: chatController.messages.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(chatController.messages[index].message),
-                );
-              },
-            )),
-          ),
-          if (_bannerAd != null)
-            Container(
-              height: 50,
-              child: AdWidget(ad: _bannerAd!),
+      body: Container(
+        color: Colors.black87,
+        child: Column(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Obx(() => ListView.builder(
+                itemCount: chatController.messages.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(
+                      chatController.messages[index].message,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    tileColor: Colors.deepPurpleAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  );
+                },
+              )),
             ),
-          Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onSubmitted: (value) {
-                      if (value.isNotEmpty) {
-                        final message = ChatMessage(message: value, id: '1', type: 'chat', sender: 'user123', receiver: 'user456', timestamp: DateTime.now());
-                        chatController.addMessage(message);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: '輸入訊息',
+            if (_bannerAd != null)
+              Container(
+                height: 50,
+                child: AdWidget(ad: _bannerAd!),
+              ),
+            Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      onSubmitted: (value) {
+                        if (value.isNotEmpty) {
+                          final message = ChatMessage(message: value, id: '1', type: 'chat', sender: 'user123', receiver: 'user456', timestamp: DateTime.now());
+                          chatController.addMessage(message);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: '輸入訊息',
+                        labelStyle: TextStyle(color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.grey[800],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: () {
-                    // 发送消息逻辑
-                  },
-                ),
-              ],
+                  IconButton(
+                    icon: Icon(Icons.send, color: Colors.white),
+                    onPressed: () {
+                      // 发送消息逻辑
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
