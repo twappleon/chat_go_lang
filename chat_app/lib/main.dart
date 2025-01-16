@@ -7,6 +7,8 @@ import './model/chat_message.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get.dart';
 import './controllers/chat_controller.dart';
+import 'package:dio/dio.dart';
+import './api_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,24 +37,37 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final ChatController chatController = Get.put(ChatController());
   BannerAd? _bannerAd;
+  final Dio _dio = Dio();
+  late ApiService _apiService;
 
   @override
   void initState() {
     super.initState();
-    _loadBannerAd(); // 加载广告
+    _apiService = ApiService(_dio);
+    _loadBannerAd();
+    _fetchData();
+  }
+
+  void _fetchData() async {
+    try {
+      final response = await _apiService.get('YOUR_API_ENDPOINT');
+      print(response.data);
+    } catch (e) {
+      print('请求失败: $e');
+    }
   }
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'YOUR_AD_UNIT_ID', // 替换为您的广告单元 ID
+      adUnitId: 'YOUR_AD_UNIT_ID',
       request: AdRequest(),
-      size: AdSize.banner, // 添加缺失的size参数
+      size: AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (_) {
-          setState(() {}); // 广告加载后更新状态
+          setState(() {});
         },
         onAdFailedToLoad: (ad, error) {
-          ad.dispose(); // 处理广告加载失败
+          ad.dispose();
         },
       ),
     )..load();
@@ -60,7 +75,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
-    _bannerAd?.dispose(); // 释放广告资源
+    _bannerAd?.dispose();
     super.dispose();
   }
 
@@ -83,7 +98,7 @@ class _ChatPageState extends State<ChatPage> {
               },
             )),
           ),
-          if (_bannerAd != null) // 显示广告
+          if (_bannerAd != null)
             Container(
               height: 50,
               child: AdWidget(ad: _bannerAd!),
