@@ -83,6 +83,15 @@ class _ChatPageState extends State<ChatPage> {
     _listKey.currentState?.insertItem(chatController.messages.length - 1);
   }
 
+  void _removeMessage(int index) {
+    final removedMessage = chatController.messages[index];
+    chatController.removeMessage(index);
+    _listKey.currentState?.removeItem(
+      index,
+      (context, animation) => _buildMessageItem(removedMessage, animation, index),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,7 +109,7 @@ class _ChatPageState extends State<ChatPage> {
                 key: _listKey,
                 initialItemCount: chatController.messages.length,
                 itemBuilder: (context, index, animation) {
-                  return _buildMessageItem(chatController.messages[index], animation);
+                  return _buildMessageItem(chatController.messages[index], animation, index);
                 },
               )),
             ),
@@ -151,7 +160,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageItem(ChatMessage message, Animation<double> animation) {
+  Widget _buildMessageItem(ChatMessage message, Animation<double> animation, int index) {
     return SizeTransition(
       sizeFactor: animation,
       child: Container(
@@ -171,6 +180,12 @@ class _ChatPageState extends State<ChatPage> {
           title: Text(
             message.message,
             style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          trailing: IconButton(
+            icon: Icon(Icons.delete, color: Colors.red),
+            onPressed: () {
+              _removeMessage(index);
+            },
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
