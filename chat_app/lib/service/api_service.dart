@@ -1,5 +1,18 @@
 import 'package:dio/dio.dart';
 
+class TokenInterceptor extends Interceptor {
+  final String token;
+
+  TokenInterceptor(this.token);
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // Add the token to the request headers
+    options.headers['Authorization'] = 'Bearer $token';
+    super.onRequest(options, handler);
+  }
+}
+
 class ApiService {
   final Dio _dio;
 
@@ -21,5 +34,30 @@ class ApiService {
     }
   }
 
+  Future<Response> put(String url, {Map<String, dynamic>? data}) async {
+    try {
+      return await _dio.put(url, data: data);
+    } catch (e) {
+      throw Exception('PUT请求失败: $e');
+    }
+  }
+
+  Future<Response> delete(String url, {Map<String, dynamic>? data}) async {
+    try {
+      return await _dio.delete(url, data: data);
+    } catch (e) {
+      throw Exception('DELETE请求失败: $e');
+    }
+  }
+
   // 可以根据需要添加更多方法，如 PUT、DELETE 等
+}
+
+class ApiPaths {
+  static const String baseUrl = 'https://api.example.com'; // 基本 URL
+  static const String getUser = '$baseUrl/user'; // 獲取用戶
+  static const String createUser = '$baseUrl/user/create'; // 創建用戶
+  static const String updateUser = '$baseUrl/user/update'; // 更新用戶
+  static const String deleteUser = '$baseUrl/user/delete'; // 刪除用戶
+  // 可以根據需要添加更多 API 路徑
 } 
