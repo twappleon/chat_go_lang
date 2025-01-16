@@ -51,13 +51,20 @@ class ApiService {
   }
 
   // 可以根据需要添加更多方法，如 PUT、DELETE 等
+
+  Future<ChatMessage> getChatHistory() async{
+    final response = await _dio.get(chat_message);
+    return ChatMessage.fromJson(response.data);
+  }
 }
 
 class ApiPaths {
-  static const String baseUrl = 'https://api.example.com'; // 基本 URL
+  static const String baseUrl = 'http://localhost:8888'; // 基本 URL
   static const String getUser = '$baseUrl/user'; // 獲取用戶
   static const String createUser = '$baseUrl/user/create'; // 創建用戶
   static const String updateUser = '$baseUrl/user/update'; // 更新用戶
   static const String deleteUser = '$baseUrl/user/delete'; // 刪除用戶
   // 可以根據需要添加更多 API 路徑
+
+  static const String chat_message = '$baseUrl/api/chat/history?userId=$userId'
 } 
