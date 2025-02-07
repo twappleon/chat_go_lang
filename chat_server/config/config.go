@@ -11,7 +11,7 @@ type Config struct {
 
 func LoadConfig() *Config {
 	return &Config{
-		MongoURI: getEnv("MONGODB_URI", "mongodb+srv://leon456:pCGji8oL5woHZR0L@cluster0.g8y1m.mongodb.net/"),
+		MongoURI: getEnv("MONGODB_URI", "mongodb://localhost:27017"),
 		DBName:   getEnv("DB_NAME", "chat_app"),
 	}
 }
