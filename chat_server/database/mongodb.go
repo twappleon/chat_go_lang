@@ -21,8 +21,8 @@ func ConnectMongoDB(cfg *config.Config) error {
 	defer cancel()
 
 	clientOptions := options.Client().ApplyURI(cfg.MongoURI).SetAuth(options.Credential{
-		Username: "root", // 使用提供的用户名
-		Password: "12345678",
+		Username: "leon456", // 使用提供的用户名
+		Password: "pCGji8oL5woHZR0L",
 	})
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
