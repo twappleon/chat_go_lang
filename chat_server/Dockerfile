@@ -32,7 +32,7 @@ RUN apk add --no-cache tzdata
 ENV TZ=Asia/Taipei
 
 # 暴露端口
-EXPOSE 8080
+EXPOSE 8888
 
 # 運行應用
 CMD ["./main"]
