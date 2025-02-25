@@ -10,6 +10,7 @@ import (
 	"p2p_chat/config"
 	"p2p_chat/database"
 	"p2p_chat/models"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +34,10 @@ var (
 	clients    = make(map[*websocket.Conn]bool)
 	clientsMut sync.Mutex
 )
+
+var requestPool = sync.Pool{
+	New: func() interface{} { return &Response{} },
+}
 
 type Message struct {
 	Type      string                 `json:"type"`
@@ -80,6 +85,73 @@ type Friend struct {
 }
 
 var friends = make(map[string][]Friend) // 存储用户的好友列表
+
+type Order struct {
+	ID     int
+	Type   string // "buy" or "sell"
+	Price  float64
+	Amount int
+}
+
+type OrderBook struct {
+	BuyOrders  []Order
+	SellOrders []Order
+}
+
+func (ob *OrderBook) AddOrder(order Order) error {
+	// 驗證訂單類型
+	if order.Type != "buy" && order.Type != "sell" {
+		return fmt.Errorf("invalid order type: %s", order.Type)
+	}
+
+	if order.Type == "buy" {
+		ob.BuyOrders = append(ob.BuyOrders, order)
+		// 對買單按價格排序（從高到低）
+		sort.Slice(ob.BuyOrders, func(i, j int) bool {
+			return ob.BuyOrders[i].Price > ob.BuyOrders[j].Price
+		})
+	} else {
+		ob.SellOrders = append(ob.SellOrders, order)
+		// 對賣單按價格排序（從低到高）
+		sort.Slice(ob.SellOrders, func(i, j int) bool {
+			return ob.SellOrders[i].Price < ob.SellOrders[j].Price
+		})
+	}
+	return nil
+}
+
+func (ob *OrderBook) MatchOrders() {
+	fmt.Printf("--MatchOrders--%d\n", len(ob.BuyOrders))
+	for len(ob.BuyOrders) > 0 && len(ob.SellOrders) > 0 {
+		buyOrder := ob.BuyOrders[0]
+		sellOrder := ob.SellOrders[0]
+		if buyOrder.Price >= sellOrder.Price {
+			tradeAmount := min(buyOrder.Amount, sellOrder.Amount)
+			// 这里可以记录交易信息，如交易价格（sellOrder.Price）、交易数量tradeAmount等
+			// 更新订单数量
+			ob.BuyOrders[0].Amount -= tradeAmount
+			ob.SellOrders[0].Amount -= tradeAmount
+			if ob.BuyOrders[0].Amount == 0 {
+				ob.BuyOrders = ob.BuyOrders[1:]
+			}
+			if ob.SellOrders[0].Amount == 0 {
+				ob.SellOrders = ob.SellOrders[1:]
+			}
+		} else {
+			break
+		}
+	}
+	if len(ob.BuyOrders) == 0 && len(ob.SellOrders) == 0 {
+		fmt.Println("All orders have been matched")
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func saveMessage(msg *models.ChatMessage) error {
 	collection := database.ChatDB.Collection("messages")
@@ -261,11 +333,23 @@ func handleGenerateWinningNumbers(c *gin.Context) {
 	winningNumbers := lottery.GenerateWinningNumbers(49, 6)
 
 	// Prepare the response
-	response := Response{
-		Code:    int(StatusOK),
-		Message: "Winning numbers generated successfully",
-		Data:    map[string]interface{}{"winningNumbers": winningNumbers},
-	}
+	// response := Response{
+	// 	Code:    int(StatusOK),
+	// 	Message: "Winning numbers generated successfully",
+	// 	Data:    map[string]interface{}{"winningNumbers": winningNumbers},
+	// }
+
+	
+	
+	// Prepare the response
+	response := requestPool.Get().(*Response)
+	response.Code = int(StatusOK)
+	response.Message = "Winning numbers generated successfully"
+	response.Data = map[string]interface{}{"winningNumbers": winningNumbers}
+
+	defer requestPool.Put(response)
+	
+		
 
 	// Send the response as JSON
 	c.JSON(http.StatusOK, response)
@@ -338,6 +422,32 @@ func handleRemoveFriend(c *gin.Context) {
 	c.JSON(http.StatusNotFound, gin.H{"error": "Friend not found"})
 }
 
+func handleAddOrder(c *gin.Context) {
+	var order Order
+	if err := c.ShouldBindJSON(&order); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order data"})
+		return
+	}
+
+	// Create OrderBook instance if not exists
+	orderBook := &OrderBook{}
+
+	if err := orderBook.AddOrder(order); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Match orders after adding new order
+	orderBook.MatchOrders()
+
+	response := Response{
+		Code:    int(StatusOK),
+		Message: string(MsgSuccess),
+		Data:    map[string]interface{}{"order": order},
+	}
+	c.JSON(http.StatusOK, response)
+}
+
 func main() {
 	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -366,10 +476,20 @@ func main() {
 		api.GET("/check-number", handleCheckNumbers)
 		api.POST("/add-friend", handleAddFriend)
 		api.DELETE("/remove-friend", handleRemoveFriend)
+		api.POST("/order", handleAddOrder)
 	}
 
 	log.Println("Server starting at :8888")
 	if err := r.Run(":8888"); err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+
+	orderBook := OrderBook{}
+	newOrderChan := make(chan Order)
+	go func() {
+		for order := range newOrderChan {
+			orderBook.AddOrder(order)
+			orderBook.MatchOrders()
+		}
+	}()
 }

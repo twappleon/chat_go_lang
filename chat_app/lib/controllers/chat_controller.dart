@@ -28,8 +28,6 @@ class ChatController extends GetxController {
   }
 
   void removeMessage(int index) {
-    if (index >= 0 && index < messages.length) {
-      messages.removeAt(index);
-    }
+    messages.removeAt(index);
   }
-} 
+}
